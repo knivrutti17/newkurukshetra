@@ -7,6 +7,7 @@ import '../../auth/controllers/session_controller.dart';
 import '../../attendance/screens/attendance_screen.dart';
 import '../../copilot/screens/copilot_screen.dart';
 import '../../courses_batches/screens/courses_batches_screen.dart';
+import '../../fees/screens/fee_management_screen.dart';
 import '../../students/screens/students_screen.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -117,6 +118,14 @@ class _DashboardShellState extends State<DashboardShell> {
       return CoursesBatchesScreen(
         user: widget.user,
         initialTab: _selectedId == 'my-batches' ? 1 : 0,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'fees' ||
+        _selectedId == 'fee-management' ||
+        _selectedId == 'payments') {
+      return FeeManagementScreen(
+        user: widget.user,
         firebaseSetupMessage: widget.firebaseSetupMessage,
       );
     }
