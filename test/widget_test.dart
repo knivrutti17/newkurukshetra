@@ -1,30 +1,53 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:kurukshetra/main.dart';
+import 'package:kurukshetra/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('invalid demo credentials show a friendly error', (tester) async {
+    await tester.pumpWidget(const InstituteOsApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.enterText(find.byType(EditableText).at(0), 'owner@demo.com');
+    await tester.enterText(find.byType(EditableText).at(1), 'not-the-password');
+    await tester.tap(find.text('Log in'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(
+      find.text('We could not find a demo account with those credentials.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('demo login shows credentials and signs an owner in and out', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const InstituteOsApp());
+
+    expect(find.text('DEMO MODE'), findsOneWidget);
+    expect(find.text('Owner / Admin'), findsOneWidget);
+    expect(find.text('Accounts Staff'), findsOneWidget);
+
+    await tester.enterText(find.byType(EditableText).at(0), 'owner@demo.com');
+    await tester.enterText(find.byType(EditableText).at(1), 'Owner@123');
+    await tester.tap(find.text('Log in'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.textContaining('Good to see you, Aarav.'), findsOneWidget);
+    final menuButton = find.byTooltip('Open navigation menu');
+    if (menuButton.evaluate().isNotEmpty) {
+      await tester.tap(menuButton);
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Approvals'), findsOneWidget);
+
+    await tester.tap(find.text('Log out'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Sign in to your workspace'), findsOneWidget);
   });
 }
