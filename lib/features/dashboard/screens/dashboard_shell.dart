@@ -4,11 +4,16 @@ import '../../../core/routing/role_navigation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/app_user.dart';
 import '../../auth/controllers/session_controller.dart';
+import '../../approvals/screens/approvals_screen.dart';
 import '../../attendance/screens/attendance_screen.dart';
 import '../../copilot/screens/copilot_screen.dart';
 import '../../courses_batches/screens/courses_batches_screen.dart';
 import '../../fees/screens/fee_management_screen.dart';
+import '../../reports/screens/reports_screen.dart';
+import '../../risk_alerts/screens/student_risk_alerts_screen.dart';
 import '../../students/screens/students_screen.dart';
+import '../../timetable/screens/timetable_screen.dart';
+import '../../trainers/screens/trainers_screen.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({
@@ -114,6 +119,12 @@ class _DashboardShellState extends State<DashboardShell> {
         firebaseSetupMessage: widget.firebaseSetupMessage,
       );
     }
+    if (_selectedId == 'risk-alerts') {
+      return StudentRiskAlertsScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
     if (_selectedId == 'courses-batches' || _selectedId == 'my-batches') {
       return CoursesBatchesScreen(
         user: widget.user,
@@ -121,10 +132,34 @@ class _DashboardShellState extends State<DashboardShell> {
         firebaseSetupMessage: widget.firebaseSetupMessage,
       );
     }
+    if (_selectedId == 'trainers') {
+      return TrainersScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
     if (_selectedId == 'fees' ||
         _selectedId == 'fee-management' ||
         _selectedId == 'payments') {
       return FeeManagementScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'timetable' || _selectedId == 'my-timetable') {
+      return TimetableScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'approvals') {
+      return ApprovalsScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'reports' || _selectedId == 'fee-reports') {
+      return ReportsScreen(
         user: widget.user,
         firebaseSetupMessage: widget.firebaseSetupMessage,
       );

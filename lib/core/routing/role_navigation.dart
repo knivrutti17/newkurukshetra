@@ -47,6 +47,11 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       icon: Icons.fact_check_outlined,
     ),
     NavigationSection(
+      id: 'risk-alerts',
+      label: 'Risk Alerts',
+      icon: Icons.health_and_safety_outlined,
+    ),
+    NavigationSection(
       id: 'fees',
       label: 'Fees',
       icon: Icons.account_balance_wallet_outlined,
@@ -99,9 +104,19 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       icon: Icons.fact_check_outlined,
     ),
     NavigationSection(
-      id: 'follow-ups',
+      id: 'risk-alerts',
       label: 'Student Follow-ups',
-      icon: Icons.forum_outlined,
+      icon: Icons.health_and_safety_outlined,
+    ),
+    NavigationSection(
+      id: 'timetable',
+      label: 'Timetable',
+      icon: Icons.calendar_month_outlined,
+    ),
+    NavigationSection(
+      id: 'reports',
+      label: 'Reports',
+      icon: Icons.assessment_outlined,
     ),
   ],
   AppRole.trainer => const [
@@ -131,9 +146,19 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       icon: Icons.fact_check_outlined,
     ),
     NavigationSection(
+      id: 'risk-alerts',
+      label: 'Risk Alerts',
+      icon: Icons.health_and_safety_outlined,
+    ),
+    NavigationSection(
       id: 'my-timetable',
       label: 'My Timetable',
       icon: Icons.calendar_month_outlined,
+    ),
+    NavigationSection(
+      id: 'reports',
+      label: 'Reports',
+      icon: Icons.assessment_outlined,
     ),
   ],
   AppRole.accounts => const [
@@ -163,6 +188,11 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       icon: Icons.account_balance_wallet_outlined,
     ),
     NavigationSection(
+      id: 'risk-alerts',
+      label: 'Risk Alerts',
+      icon: Icons.health_and_safety_outlined,
+    ),
+    NavigationSection(
       id: 'payments',
       label: 'Payments',
       icon: Icons.payments_outlined,
@@ -171,6 +201,11 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       id: 'fee-reports',
       label: 'Fee Reports',
       icon: Icons.receipt_long_outlined,
+    ),
+    NavigationSection(
+      id: 'approvals',
+      label: 'Approvals',
+      icon: Icons.task_alt_outlined,
     ),
     NavigationSection(
       id: 'reminder-drafts',

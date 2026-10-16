@@ -5,10 +5,12 @@ import '../../../data/models/app_user.dart';
 import '../../../data/models/batch.dart';
 import '../../../data/models/course.dart';
 import '../../../data/models/student.dart';
+import '../../../data/models/trainer.dart';
 import '../../../data/services/batch_service.dart';
 import '../../../data/services/course_batch_seed_service.dart';
 import '../../../data/services/course_service.dart';
 import '../../../data/services/student_service.dart';
+import '../../../data/services/trainer_service.dart';
 
 class CoursesBatchesScreen extends StatefulWidget {
   const CoursesBatchesScreen({
@@ -19,6 +21,7 @@ class CoursesBatchesScreen extends StatefulWidget {
     this.batchService,
     this.seedService,
     this.studentService,
+    this.trainerService,
     super.key,
   });
 
@@ -29,6 +32,7 @@ class CoursesBatchesScreen extends StatefulWidget {
   final BatchService? batchService;
   final CourseBatchSeedService? seedService;
   final StudentService? studentService;
+  final TrainerService? trainerService;
 
   @override
   State<CoursesBatchesScreen> createState() => _CoursesBatchesScreenState();
@@ -40,11 +44,13 @@ class _CoursesBatchesScreenState extends State<CoursesBatchesScreen>
   late final BatchService _batchService;
   late final CourseBatchSeedService _seedService;
   late final StudentService _studentService;
+  late final TrainerService _trainerService;
   late final TabController _tabController;
 
   late Stream<List<Course>> _coursesStream;
   late Stream<List<Batch>> _batchesStream;
   late Stream<List<Student>> _studentsStream;
+  late Stream<List<Trainer>> _trainersStream;
 
   bool _isSeeding = false;
 
@@ -58,6 +64,7 @@ class _CoursesBatchesScreenState extends State<CoursesBatchesScreen>
     _batchService = widget.batchService ?? BatchService();
     _seedService = widget.seedService ?? CourseBatchSeedService();
     _studentService = widget.studentService ?? StudentService();
+    _trainerService = widget.trainerService ?? TrainerService();
 
     final tabIndex = _isTrainer ? 1 : widget.initialTab.clamp(0, 1);
     _tabController = TabController(length: 2, vsync: this, initialIndex: tabIndex);
@@ -65,6 +72,7 @@ class _CoursesBatchesScreenState extends State<CoursesBatchesScreen>
     _coursesStream = _courseService.watchForUser(widget.user);
     _batchesStream = _batchService.watchForUser(widget.user);
     _studentsStream = _studentService.watchForUser(widget.user);
+    _trainersStream = _trainerService.watchForUser(widget.user);
   }
 
   @override
@@ -189,34 +197,39 @@ class _CoursesBatchesScreenState extends State<CoursesBatchesScreen>
     },
   );
 
-  Widget _buildBatchesView() => StreamBuilder<List<Course>>(
-    stream: _coursesStream,
-    builder: (context, coursesSnapshot) => StreamBuilder<List<Student>>(
-      stream: _studentsStream,
-      builder: (context, studentsSnapshot) => StreamBuilder<List<Batch>>(
-        stream: _batchesStream,
-        builder: (context, batchesSnapshot) {
-          if (batchesSnapshot.hasError) {
-            return _ErrorCard(
-              title: 'Unable to load batches',
-              message: batchesSnapshot.error.toString(),
-              onRetry: _reloadBatches,
+  Widget _buildBatchesView() => StreamBuilder<List<Trainer>>(
+    stream: _trainersStream,
+    builder: (context, trainersSnapshot) => StreamBuilder<List<Course>>(
+      stream: _coursesStream,
+      builder: (context, coursesSnapshot) => StreamBuilder<List<Student>>(
+        stream: _studentsStream,
+        builder: (context, studentsSnapshot) => StreamBuilder<List<Batch>>(
+          stream: _batchesStream,
+          builder: (context, batchesSnapshot) {
+            if (batchesSnapshot.hasError) {
+              return _ErrorCard(
+                title: 'Unable to load batches',
+                message: batchesSnapshot.error.toString(),
+                onRetry: _reloadBatches,
+              );
+            }
+            if (!batchesSnapshot.hasData) {
+              return const _LoadingCard(label: 'Loading batches…');
+            }
+            final trainers = trainersSnapshot.data ?? const <Trainer>[];
+            final courses = coursesSnapshot.data ?? const <Course>[];
+            final students = studentsSnapshot.data ?? const <Student>[];
+            return _BatchesList(
+              batches: batchesSnapshot.data!,
+              courses: courses,
+              students: students,
+              trainers: trainers,
+              user: widget.user,
+              canManage: _canManage,
+              batchService: _batchService,
             );
-          }
-          if (!batchesSnapshot.hasData) {
-            return const _LoadingCard(label: 'Loading batches…');
-          }
-          final courses = coursesSnapshot.data ?? const <Course>[];
-          final students = studentsSnapshot.data ?? const <Student>[];
-          return _BatchesList(
-            batches: batchesSnapshot.data!,
-            courses: courses,
-            students: students,
-            user: widget.user,
-            canManage: _canManage,
-            batchService: _batchService,
-          );
-        },
+          },
+        ),
       ),
     ),
   );
@@ -811,11 +824,13 @@ class _BatchesList extends StatefulWidget {
     required this.user,
     required this.canManage,
     required this.batchService,
+    this.trainers = const <Trainer>[],
   });
 
   final List<Batch> batches;
   final List<Course> courses;
   final List<Student> students;
+  final List<Trainer> trainers;
   final AppUser user;
   final bool canManage;
   final BatchService batchService;
@@ -869,6 +884,7 @@ class _BatchesListState extends State<_BatchesList> {
         user: widget.user,
         batch: batch,
         courses: widget.courses,
+        trainers: widget.trainers,
         batchService: widget.batchService,
       ),
     );
@@ -1165,12 +1181,14 @@ class _BatchFormDialog extends StatefulWidget {
     required this.user,
     required this.courses,
     required this.batchService,
+    this.trainers = const <Trainer>[],
     this.batch,
   });
 
   final AppUser user;
   final Batch? batch;
   final List<Course> courses;
+  final List<Trainer> trainers;
   final BatchService batchService;
 
   @override
@@ -1190,11 +1208,30 @@ class _BatchFormDialogState extends State<_BatchFormDialog> {
   late String _status;
   bool _isSaving = false;
 
-  static const _availableTrainers = [
-    (id: 'demo-trainer', name: 'Rohan Kulkarni'),
-    (id: 'trainer-2', name: 'Pooja Verma'),
-    (id: 'trainer-3', name: 'Aditya Sen'),
-  ];
+  List<({String id, String name})> get _effectiveTrainers {
+    if (widget.trainers.isNotEmpty) {
+      final active = widget.trainers
+          .where((t) => t.isActive)
+          .map((t) => (id: t.id, name: t.fullName))
+          .toList();
+      if (widget.batch != null &&
+          _selectedTrainerId != null &&
+          !active.any((t) => t.id == _selectedTrainerId)) {
+        active.add((
+          id: _selectedTrainerId!,
+          name: widget.batch?.trainerName.isNotEmpty == true
+              ? widget.batch!.trainerName
+              : _selectedTrainerId!,
+        ));
+      }
+      if (active.isNotEmpty) return active;
+    }
+    return const [
+      (id: 'demo-trainer', name: 'Rohan Kulkarni'),
+      (id: 'trainer-pooja-verma', name: 'Pooja Verma'),
+      (id: 'trainer-aditya-sen', name: 'Aditya Sen'),
+    ];
+  }
 
   @override
   void initState() {
@@ -1206,8 +1243,10 @@ class _BatchFormDialogState extends State<_BatchFormDialog> {
     );
     _scheduleController = TextEditingController(text: b?.scheduleDescription ?? '');
 
+    final available = _effectiveTrainers;
     _selectedCourseId = b?.courseId;
-    _selectedTrainerId = b?.trainerId ?? 'demo-trainer';
+    _selectedTrainerId = b?.trainerId ??
+        (available.isNotEmpty ? available.first.id : 'demo-trainer');
     _startDate = b?.startDate ?? DateTime.now();
     _endDate = b?.endDate ?? DateTime.now().add(const Duration(days: 180));
     _status = b?.status ?? 'active';
@@ -1237,7 +1276,7 @@ class _BatchFormDialogState extends State<_BatchFormDialog> {
   }
 
   String get _trainerName {
-    final match = _availableTrainers.cast<({String id, String name})?>().firstWhere(
+    final match = _effectiveTrainers.cast<({String id, String name})?>().firstWhere(
       (t) => t?.id == _selectedTrainerId,
       orElse: () => null,
     );
@@ -1393,7 +1432,7 @@ class _BatchFormDialogState extends State<_BatchFormDialog> {
                 DropdownButtonFormField<String>(
                   initialValue: _selectedTrainerId,
                   decoration: const InputDecoration(labelText: 'Assigned Trainer *'),
-                  items: _availableTrainers
+                  items: _effectiveTrainers
                       .map(
                         (t) => DropdownMenuItem(
                           value: t.id,
