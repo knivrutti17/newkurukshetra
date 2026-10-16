@@ -7,7 +7,10 @@ import 'features/auth/services/mock_auth_service.dart';
 import 'features/dashboard/screens/dashboard_shell.dart';
 
 class InstituteOsApp extends StatefulWidget {
-  const InstituteOsApp({super.key});
+  const InstituteOsApp({this.firebaseSetupMessage, super.key});
+
+  /// A non-sensitive setup failure from the Firebase demo bootstrap.
+  final String? firebaseSetupMessage;
 
   @override
   State<InstituteOsApp> createState() => _InstituteOsAppState();
@@ -44,6 +47,7 @@ class _InstituteOsAppState extends State<InstituteOsApp> {
           return DashboardShell(
             user: user,
             sessionController: _sessionController,
+            firebaseSetupMessage: widget.firebaseSetupMessage,
           );
         },
       ),

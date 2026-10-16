@@ -4,17 +4,22 @@ import '../../../core/routing/role_navigation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/app_user.dart';
 import '../../auth/controllers/session_controller.dart';
+import '../../attendance/screens/attendance_screen.dart';
 import '../../copilot/screens/copilot_screen.dart';
+import '../../courses_batches/screens/courses_batches_screen.dart';
+import '../../students/screens/students_screen.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({
     required this.user,
     required this.sessionController,
+    this.firebaseSetupMessage,
     super.key,
   });
 
   final AppUser user;
   final SessionController sessionController;
+  final String? firebaseSetupMessage;
 
   @override
   State<DashboardShell> createState() => _DashboardShellState();
@@ -95,6 +100,25 @@ class _DashboardShellState extends State<DashboardShell> {
     }
     if (_selectedId == 'dashboard') {
       return DashboardOverview(user: widget.user);
+    }
+    if (_selectedId == 'students') {
+      return StudentsScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'attendance') {
+      return AttendanceScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'courses-batches' || _selectedId == 'my-batches') {
+      return CoursesBatchesScreen(
+        user: widget.user,
+        initialTab: _selectedId == 'my-batches' ? 1 : 0,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
     }
     final section = sections.firstWhere((item) => item.id == _selectedId);
     return PlaceholderSection(section: section, user: widget.user);

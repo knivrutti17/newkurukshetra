@@ -94,6 +94,11 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       icon: Icons.school_outlined,
     ),
     NavigationSection(
+      id: 'attendance',
+      label: 'Attendance',
+      icon: Icons.fact_check_outlined,
+    ),
+    NavigationSection(
       id: 'follow-ups',
       label: 'Student Follow-ups',
       icon: Icons.forum_outlined,
@@ -109,6 +114,11 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       id: 'copilot',
       label: 'AI Copilot',
       icon: Icons.auto_awesome_rounded,
+    ),
+    NavigationSection(
+      id: 'students',
+      label: 'Students',
+      icon: Icons.people_alt_outlined,
     ),
     NavigationSection(
       id: 'my-batches',
@@ -136,6 +146,16 @@ List<NavigationSection> navigationForRole(AppRole role) => switch (role) {
       id: 'copilot',
       label: 'AI Copilot',
       icon: Icons.auto_awesome_rounded,
+    ),
+    NavigationSection(
+      id: 'students',
+      label: 'Students',
+      icon: Icons.people_alt_outlined,
+    ),
+    NavigationSection(
+      id: 'courses-batches',
+      label: 'Courses & Batches',
+      icon: Icons.school_outlined,
     ),
     NavigationSection(
       id: 'fee-management',
