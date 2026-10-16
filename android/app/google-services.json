@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "84512715421",
+    "project_id": "kurukshetra-c6c32",
+    "storage_bucket": "kurukshetra-c6c32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:84512715421:android:095a50e09d147c34099a74",
+        "android_client_info": {
+          "package_name": "com.example.kurukshetra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY4sYo2OItAH6VPOq7uMj8B1VtsoRDEHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
