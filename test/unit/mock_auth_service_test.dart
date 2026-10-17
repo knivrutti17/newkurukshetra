@@ -34,6 +34,15 @@ void main() {
         ),
       );
     });
+
+    test('resolves supported Firebase role strings', () {
+      expect(AppUser.roleFromString('owner'), AppRole.owner);
+      expect(AppUser.roleFromString('counselor'), AppRole.counselor);
+      expect(AppUser.roleFromString('trainer'), AppRole.trainer);
+      expect(AppUser.roleFromString('accounts'), AppRole.accounts);
+      expect(AppUser.roleFromString('ACCOUNTS STAFF'), AppRole.accounts);
+      expect(AppUser.roleFromString('invalid-role'), isNull);
+    });
   });
 
   test('session logs out and supports switching roles', () async {

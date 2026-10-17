@@ -40,6 +40,8 @@ class FirebaseAuthService implements AuthService {
       return await _fromFirebaseUser(firebaseUser);
     } on FirebaseAuthException catch (error) {
       throw AuthException(_friendlyAuthError(error.code, error.message));
+    } on FirebaseException catch (error) {
+      throw AuthException(_friendlyFirestoreError(error.code, error.message));
     } on AuthException {
       rethrow;
     } catch (_) {
@@ -96,11 +98,26 @@ class FirebaseAuthService implements AuthService {
       'invalid-email' => 'Please enter a valid email address.',
       'user-not-found' || 'wrong-password' => 'Incorrect email or password.',
       'user-disabled' => 'This Firebase account has been disabled.',
+      'operation-not-allowed' || 'provider-disabled' =>
+        'Email/password sign-in is not enabled in Firebase Authentication.',
       'too-many-requests' =>
         'Too many attempts. Please wait a moment and try again.',
       'network-request-failed' =>
         'Network error. Check your connection and try again.',
+      'invalid-credential' => 'Incorrect email or password.',
       _ => message ?? 'Authentication failed. Please try again.',
+    };
+  }
+
+  String _friendlyFirestoreError(String code, String? message) {
+    return switch (code) {
+      'permission-denied' => 'Authentication succeeded, but the user role profile could not be loaded. Check the Firestore rules and the users/{uid} document.',
+      'unavailable' =>
+        'Firebase is temporarily unavailable. Please try again in a moment.',
+      'service-disabled' => 'Cloud Firestore is disabled in this Firebase project. Enable Firestore in the Firebase Console.',
+      'not-found' => 'The authenticated account is valid, but no role profile was found for this user. Add a users/{uid} document with a valid role.',
+      'failed-precondition' => 'Firebase is not fully configured for this app. Check project setup and Firestore enablement.',
+      _ => message ?? 'The account authenticated, but the user role profile could not be loaded.',
     };
   }
 }
