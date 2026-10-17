@@ -40,7 +40,9 @@ class _StudentRiskAlertsScreenState extends State<StudentRiskAlertsScreen> {
     super.initState();
     _service = widget.riskAlertService ?? StudentRiskAlertService();
     _alerts = _service.watchForUser(widget.user);
-    _lastScan = _service.getLastSuccessfulScan();
+    _lastScan = _service.getLastSuccessfulScan(
+      forInstituteId: widget.user.instituteId,
+    );
     _searchController.addListener(_refreshFilters);
   }
 
@@ -201,7 +203,11 @@ class _StudentRiskAlertsScreenState extends State<StudentRiskAlertsScreen> {
                 else if (filtered.isEmpty)
                   _EmptyState(hasFilters: alerts.isNotEmpty)
                 else
-                  _AlertList(alerts: filtered, onOpen: _openDetails),
+                  _AlertList(
+                    alerts: filtered,
+                    onOpen: _openDetails,
+                    user: widget.user,
+                  ),
                 const SizedBox(height: 14),
                 const _IndicatorNote(),
               ],
@@ -326,11 +332,11 @@ class _SummaryCards extends StatelessWidget {
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1100
+        final columns = constraints.maxWidth >= 1200
             ? 4
             : constraints.maxWidth >= 600
-            ? 2
-            : 1;
+                ? 2
+                : 1;
         const gap = 14.0;
         final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
@@ -545,20 +551,25 @@ class _FilterPanel extends StatelessWidget {
 }
 
 class _AlertList extends StatelessWidget {
-  const _AlertList({required this.alerts, required this.onOpen});
+  const _AlertList({
+    required this.alerts,
+    required this.onOpen,
+    required this.user,
+  });
   final List<StudentAlert> alerts;
   final ValueChanged<StudentAlert> onOpen;
+  final AppUser user;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => constraints.maxWidth >= 900
-        ? _AlertTable(alerts: alerts, onOpen: onOpen)
+        ? _AlertTable(alerts: alerts, onOpen: onOpen, user: user)
         : Column(
             children: alerts
                 .map(
                   (alert) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: _AlertCard(alert: alert, onOpen: onOpen),
+                    child: _AlertCard(alert: alert, onOpen: onOpen, user: user),
                   ),
                 )
                 .toList(),
@@ -567,175 +578,245 @@ class _AlertList extends StatelessWidget {
 }
 
 class _AlertTable extends StatelessWidget {
-  const _AlertTable({required this.alerts, required this.onOpen});
+  const _AlertTable({
+    required this.alerts,
+    required this.onOpen,
+    required this.user,
+  });
   final List<StudentAlert> alerts;
   final ValueChanged<StudentAlert> onOpen;
+  final AppUser user;
 
   @override
-  Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        dataRowMinHeight: 72,
-        dataRowMaxHeight: 80,
-        columnSpacing: 24,
-        headingRowColor: WidgetStatePropertyAll(const Color(0xFFF8FAFD)),
-        columns: const [
-          DataColumn(label: Text('STUDENT')),
-          DataColumn(label: Text('BATCH')),
-          DataColumn(label: Text('ALERT')),
-          DataColumn(label: Text('EXPLANATION')),
-          DataColumn(label: Text('STATUS')),
-          DataColumn(label: Text('CREATED')),
-          DataColumn(label: Text('')),
-        ],
-        rows: alerts
-            .map(
-              (alert) => DataRow(
-                cells: [
-                  DataCell(
-                    Column(
+  Widget build(BuildContext context) {
+    final showFinancials =
+        user.role != AppRole.trainer && user.role != AppRole.counselor;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          dataRowMinHeight: 72,
+          dataRowMaxHeight: 80,
+          horizontalMargin: 12,
+          columnSpacing: 10,
+          headingRowColor: const WidgetStatePropertyAll(Color(0xFFF8FAFD)),
+          columns: [
+            const DataColumn(label: Text('STUDENT')),
+            const DataColumn(label: Text('BATCH')),
+            const DataColumn(label: Text('ALERT')),
+            const DataColumn(label: Text('ATTEND %')),
+            if (showFinancials) const DataColumn(label: Text('DUE')),
+            const DataColumn(label: Text('EXPLANATION')),
+            const DataColumn(label: Text('STATUS')),
+            const DataColumn(label: Text('CREATED')),
+            const DataColumn(label: Text('')),
+          ],
+          rows: alerts.map((alert) {
+            final attendancePct = alert.evidence['attendancePercentage'];
+            final balance = alert.evidence['outstandingBalance'];
+
+            return DataRow(
+              cells: [
+                DataCell(
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        alert.studentName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        alert.studentId,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blueGrey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 70,
+                    child: Text(
+                      alert.batchName.isEmpty ? '—' : alert.batchName,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 125,
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          alert.studentName,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          alert.alertType.label,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                        Text(
-                          alert.studentId,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueGrey.shade600,
-                          ),
-                        ),
+                        const SizedBox(height: 4),
+                        _SeverityChip(severity: alert.severity),
                       ],
                     ),
                   ),
+                ),
+                DataCell(
+                  Text(
+                    attendancePct is num
+                        ? '${attendancePct.toStringAsFixed(1)}%'
+                        : '—',
+                    style: TextStyle(
+                      fontWeight: attendancePct is num
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: attendancePct is num && attendancePct < 75
+                          ? const Color(0xFFB42318)
+                          : null,
+                    ),
+                  ),
+                ),
+                if (showFinancials)
                   DataCell(
-                    SizedBox(
-                      width: 120,
-                      child: Text(
-                        alert.batchName.isEmpty ? '—' : alert.batchName,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      balance is num ? '₹${balance.toStringAsFixed(2)}' : '—',
+                      style: TextStyle(
+                        fontWeight: balance is num
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: balance is num && balance > 0
+                            ? const Color(0xFFB42318)
+                            : null,
                       ),
                     ),
                   ),
-                  DataCell(
-                    SizedBox(
-                      width: 170,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            alert.alertType.label,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          const SizedBox(height: 4),
-                          _SeverityChip(severity: alert.severity),
-                        ],
-                      ),
+                DataCell(
+                  SizedBox(
+                    width: 160,
+                    child: Text(
+                      alert.reason,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  DataCell(
-                    SizedBox(
-                      width: 280,
-                      child: Text(
-                        alert.reason,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                ),
+                DataCell(_StatusChip(status: alert.status)),
+                DataCell(Text(_formatDate(alert.createdAt))),
+                DataCell(
+                  OutlinedButton(
+                    onPressed: () => onOpen(alert),
+                    child: const Text('Open'),
                   ),
-                  DataCell(_StatusChip(status: alert.status)),
-                  DataCell(Text(_formatDate(alert.createdAt))),
-                  DataCell(
-                    OutlinedButton(
-                      onPressed: () => onOpen(alert),
-                      child: const Text('Open'),
-                    ),
-                  ),
-                ],
-              ),
-            )
-            .toList(),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _AlertCard extends StatelessWidget {
-  const _AlertCard({required this.alert, required this.onOpen});
+  const _AlertCard({
+    required this.alert,
+    required this.onOpen,
+    required this.user,
+  });
   final StudentAlert alert;
   final ValueChanged<StudentAlert> onOpen;
+  final AppUser user;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      alert.studentName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
+  Widget build(BuildContext context) {
+    final showFinancials =
+        user.role != AppRole.trainer && user.role != AppRole.counselor;
+    final attendancePct = alert.evidence['attendancePercentage'];
+    final balance = alert.evidence['outstandingBalance'];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        alert.studentName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${alert.studentId} · ${alert.batchName.isEmpty ? 'No batch' : alert.batchName}',
-                      style: TextStyle(
-                        color: Colors.blueGrey.shade600,
-                        fontSize: 12,
+                      Text(
+                        '${alert.studentId} · ${alert.batchName.isEmpty ? 'No batch' : alert.batchName}',
+                        style: TextStyle(
+                          color: Colors.blueGrey.shade600,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _StatusChip(status: alert.status),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              Chip(label: Text(alert.alertType.label)),
-              _SeverityChip(severity: alert.severity),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(alert.reason),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                'Created ${_formatDate(alert.createdAt)}',
-                style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade600),
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () => onOpen(alert),
-                child: const Text('Open'),
-              ),
-            ],
-          ),
-        ],
+                _StatusChip(status: alert.status),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Chip(label: Text(alert.alertType.label)),
+                _SeverityChip(severity: alert.severity),
+                if (attendancePct is num)
+                  Chip(
+                    avatar: const Icon(Icons.percent, size: 14),
+                    label: Text(
+                      '${attendancePct.toStringAsFixed(1)}% attendance',
+                    ),
+                  ),
+                if (showFinancials && balance is num && balance > 0)
+                  Chip(
+                    avatar: const Icon(Icons.currency_rupee, size: 14),
+                    label: Text('₹${balance.toStringAsFixed(2)} due'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(alert.reason),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text(
+                  'Created ${_formatDate(alert.createdAt)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blueGrey.shade600,
+                  ),
+                ),
+                const Spacer(),
+                OutlinedButton(
+                  onPressed: () => onOpen(alert),
+                  child: const Text('Open'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SeverityChip extends StatelessWidget {
@@ -920,7 +1001,7 @@ class _AlertDetailDialogState extends State<_AlertDetailDialog> {
             _SectionTitle('Why this indicator exists'),
             Text(widget.alert.reason),
             const SizedBox(height: 9),
-            _EvidenceCard(evidence: widget.alert.evidence),
+            _EvidenceCard(evidence: widget.alert.evidence, user: widget.user),
             const SizedBox(height: 18),
             _SectionTitle('Follow-up'),
             DropdownButtonFormField<StudentAlertStatus>(
@@ -1053,33 +1134,52 @@ class _KeyValueGrid extends StatelessWidget {
 }
 
 class _EvidenceCard extends StatelessWidget {
-  const _EvidenceCard({required this.evidence});
+  const _EvidenceCard({required this.evidence, required this.user});
   final Map<String, dynamic> evidence;
+  final AppUser user;
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFD),
-      border: Border.all(color: const Color(0xFFE6EAF2)),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: evidence.isEmpty
-        ? const Text('No additional evidence was saved.')
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: evidence.entries
-                .map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Text(
-                      '${_titleize(e.key)}: ${_formatEvidence(e.value)}',
+  Widget build(BuildContext context) {
+    final showFinancials =
+        user.role != AppRole.trainer && user.role != AppRole.counselor;
+    final filtered = evidence.entries.where((e) {
+      if (!showFinancials) {
+        final keyLower = e.key.toLowerCase();
+        if (keyLower.contains('fee') ||
+            keyLower.contains('balance') ||
+            keyLower.contains('instalment') ||
+            keyLower.contains('payment')) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFD),
+        border: Border.all(color: const Color(0xFFE6EAF2)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: filtered.isEmpty
+          ? const Text('No additional evidence was saved.')
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: filtered
+                  .map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(
+                        '${_titleize(e.key)}: ${_formatEvidence(e.value)}',
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
-          ),
-  );
+                  )
+                  .toList(),
+            ),
+    );
+  }
 }
 
 class _LoadingState extends StatelessWidget {

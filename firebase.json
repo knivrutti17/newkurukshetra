@@ -1,1 +1,26 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"kurukshetra-c6c32","appId":"1:84512715421:android:095a50e09d147c34099a74","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"kurukshetra-c6c32","configurations":{"android":"1:84512715421:android:095a50e09d147c34099a74","web":"1:84512715421:web:875504efe4a69eee099a74","windows":"1:84512715421:web:13a982a2e1bbb5b4099a74"}}}}}}
+{
+	"firestore": {
+		"indexes": "firestore.indexes.json"
+	},
+	"flutter": {
+		"platforms": {
+			"android": {
+				"default": {
+					"projectId": "kurukshetra-c6c32",
+					"appId": "1:84512715421:android:095a50e09d147c34099a74",
+					"fileOutput": "android/app/google-services.json"
+				}
+			},
+			"dart": {
+				"lib/firebase_options.dart": {
+					"projectId": "kurukshetra-c6c32",
+					"configurations": {
+						"android": "1:84512715421:android:095a50e09d147c34099a74",
+						"web": "1:84512715421:web:875504efe4a69eee099a74",
+						"windows": "1:84512715421:web:13a982a2e1bbb5b4099a74"
+					}
+				}
+			}
+		}
+	}
+}

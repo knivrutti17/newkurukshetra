@@ -42,9 +42,16 @@ class StudentService {
   }
 
   StudentAccessScope _scopeFor(AppUser user) => switch (user.role) {
-    AppRole.owner || AppRole.accounts => const StudentAccessScope(),
-    AppRole.counselor => StudentAccessScope(counselorId: user.id),
-    AppRole.trainer => StudentAccessScope(trainerId: user.id),
+    AppRole.owner ||
+    AppRole.accounts => StudentAccessScope(instituteId: user.instituteId),
+    AppRole.counselor => StudentAccessScope(
+      instituteId: user.instituteId,
+      counselorId: user.id,
+    ),
+    AppRole.trainer => StudentAccessScope(
+      instituteId: user.instituteId,
+      trainerId: user.id,
+    ),
   };
 
   void _ensureCanManage(AppUser user) {

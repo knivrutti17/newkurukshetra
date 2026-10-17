@@ -1,13 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/routing/role_navigation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/app_user.dart';
-import '../../../data/models/fee_installment.dart';
-import '../../../data/models/payment.dart';
-import '../../../data/repositories/fee_repository.dart';
-import '../../../data/services/fee_service.dart';
 import '../../auth/controllers/session_controller.dart';
 import '../../approvals/screens/approvals_screen.dart';
 import '../../attendance/screens/attendance_screen.dart';
@@ -20,6 +16,8 @@ import '../../risk_alerts/screens/student_risk_alerts_screen.dart';
 import '../../students/screens/students_screen.dart';
 import '../../timetable/screens/timetable_screen.dart';
 import '../../trainers/screens/trainers_screen.dart';
+import 'accounts_dashboard_screen.dart';
+import 'owner_dashboard_screen.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({
@@ -65,12 +63,14 @@ class _DashboardShellState extends State<DashboardShell> {
           ? AppBar(
               titleSpacing: 8,
               title: const _AppBarBrand(),
-              actions: const [
-                Padding(
-                  padding: EdgeInsets.only(right: 14),
-                  child: _DemoModeChip(),
-                ),
-              ],
+              actions: _selectedId == 'dashboard'
+                  ? const []
+                  : const [
+                      Padding(
+                        padding: EdgeInsets.only(right: 14),
+                        child: _DemoModeChip(),
+                      ),
+                    ],
             )
           : null,
       drawer: compact
@@ -108,7 +108,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
   Widget _buildContent(List<NavigationSection> sections) {
     if (_selectedId == 'copilot') {
-      return const CopilotScreen();
+      return CopilotScreen(user: widget.user);
     }
     if (_selectedId == 'dashboard') {
       return DashboardOverview(
@@ -405,665 +405,209 @@ class DashboardOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (user.role == AppRole.owner) {
+      return OwnerDashboardScreen(
+        user: user,
+        onSectionSelected: onSectionSelected,
+      );
+    }
     if (user.role == AppRole.accounts) {
       return AccountsDashboardScreen(
         user: user,
         onSectionSelected: onSectionSelected,
       );
     }
-
-    final data = _DashboardData.forRole(user.role);
-    final firstName = user.name.split(' ').first;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1440),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Good to see you, $firstName.',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: AppTheme.ink,
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        data.subtitle,
-                        style: Theme.of(context).textTheme.bodyLarge
-                            ?.copyWith(color: Colors.blueGrey.shade600),
-                      ),
-                    ],
-                  ),
-                ),
-                const _DemoModeChip(),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const _DemoDataNotice(),
-            const SizedBox(height: 18),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 1120
-                    ? 4
-                    : constraints.maxWidth >= 600
-                    ? 2
-                    : 1;
-                const gap = 16.0;
-                final cardWidth =
-                    (constraints.maxWidth - gap * (columns - 1)) / columns;
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: data.metrics
-                      .map(
-                        (metric) => SizedBox(
-                          width: cardWidth,
-                          child: _MetricCard(metric: metric),
-                        ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F0FF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppTheme.brand,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your workspace is ready for the next step',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  color: AppTheme.ink,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Use the navigation to explore placeholder modules '
-                            'or try the AI Copilot demo. Live data and actions '
-                            'are intentionally not enabled yet.',
-                            style: TextStyle(color: Colors.blueGrey.shade600),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _StaffDashboardScreen(
+      user: user,
+      onSectionSelected: onSectionSelected,
     );
   }
 }
 
-class AccountsDashboardScreen extends StatefulWidget {
-  const AccountsDashboardScreen({
-    required this.user,
-    this.onSectionSelected,
-    super.key,
-  });
+class _StaffDashboardScreen extends StatefulWidget {
+  const _StaffDashboardScreen({required this.user, this.onSectionSelected});
 
   final AppUser user;
   final ValueChanged<String>? onSectionSelected;
 
   @override
-  State<AccountsDashboardScreen> createState() =>
-      _AccountsDashboardScreenState();
+  State<_StaffDashboardScreen> createState() => _StaffDashboardScreenState();
 }
 
-class _AccountsDashboardScreenState extends State<AccountsDashboardScreen> {
-  late final FeeService _feeService;
-  late final FirestoreFeeRepository _feeRepository;
+class _StaffDashboardScreenState extends State<_StaffDashboardScreen> {
+  late Future<List<_DashboardMetric>> _metrics;
 
   @override
   void initState() {
     super.initState();
-    _feeService = FeeService();
-    _feeRepository = FirestoreFeeRepository();
+    _metrics = _loadMetrics();
   }
+
+  Future<List<_DashboardMetric>> _loadMetrics() async {
+    final firestore = FirebaseFirestore.instance;
+    if (widget.user.role == AppRole.counselor) {
+      final result = await _dashboardQuery(
+        'assigned active student count',
+        firestore
+            .collection('students')
+            .where('instituteId', isEqualTo: widget.user.instituteId)
+            .where('counselorId', isEqualTo: widget.user.id)
+            .where('status', isEqualTo: 'active')
+            .count()
+            .get(),
+      );
+      return [
+        _DashboardMetric(
+          label: 'Assigned active students',
+          value: '${result.count ?? 0}',
+          icon: Icons.people_alt_outlined,
+          color: const Color(0xFF2563EB),
+          destinationId: 'students',
+        ),
+      ];
+    }
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfTomorrow = startOfDay.add(const Duration(days: 1));
+    final assignedBatches = _dashboardQuery(
+      'assigned active batch count',
+      firestore
+          .collection('batches')
+          .where('instituteId', isEqualTo: widget.user.instituteId)
+          .where('trainerId', isEqualTo: widget.user.id)
+          .where('status', isEqualTo: 'active')
+          .count()
+          .get(),
+    );
+    final todaysClasses = _dashboardQuery(
+      "today's scheduled classes",
+      firestore
+          .collection('classSessions')
+          .where('instituteId', isEqualTo: widget.user.instituteId)
+          .where('trainerId', isEqualTo: widget.user.id)
+          .where(
+            'startAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
+          .where('startAt', isLessThan: Timestamp.fromDate(startOfTomorrow))
+          .get(),
+    );
+    final results = await Future.wait([assignedBatches, todaysClasses]);
+    final classes = results[1] as QuerySnapshot<Map<String, dynamic>>;
+    final scheduledCount = classes.docs
+        .where((document) => document.data()['status'] == 'scheduled')
+        .length;
+
+    return [
+      _DashboardMetric(
+        label: 'Assigned active batches',
+        value: '${(results[0] as AggregateQuerySnapshot).count ?? 0}',
+        icon: Icons.groups_outlined,
+        color: const Color(0xFF2563EB),
+        destinationId: 'my-batches',
+      ),
+      _DashboardMetric(
+        label: "Today's scheduled classes",
+        value: '$scheduledCount',
+        icon: Icons.calendar_month_outlined,
+        color: const Color(0xFF0891B2),
+        destinationId: 'my-timetable',
+      ),
+    ];
+  }
+
+  void _refresh() => setState(() => _metrics = _loadMetrics());
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final monthStart = DateTime(today.year, today.month, 1);
-    final monthEnd = DateTime(today.year, today.month + 1, 0, 23, 59, 59);
+    final firstName = widget.user.name.split(' ').first;
+    final unavailableText = widget.user.role == AppRole.counselor
+        ? 'Follow-up tasks and student request tracking are unavailable until a persisted workflow is configured.'
+        : 'Attendance completion counts and correction requests are unavailable until attendance sessions are linked to scheduled classes.';
 
-    return StreamBuilder<List<FeeInstallment>>(
-      stream: _feeService.watchInstallmentsForUser(widget.user),
-      initialData: const <FeeInstallment>[],
-      builder: (context, installmentSnapshot) {
-        if (installmentSnapshot.hasError) {
-          return _FullPageError(
-            title: 'Unable to load financial dashboard',
-            message: installmentSnapshot.error.toString(),
-          );
-        }
-
-        return StreamBuilder<List<Payment>>(
-          stream: _feeRepository.watchAllPayments(
-            scope: const FeeAccessScope(),
-          ),
-          initialData: const <Payment>[],
-          builder: (context, paymentSnapshot) {
-            if (paymentSnapshot.hasError) {
-              return _FullPageError(
-                title: 'Unable to load payment history',
-                message: paymentSnapshot.error.toString(),
-              );
-            }
-
-            final installments =
-                installmentSnapshot.data ?? const <FeeInstallment>[];
-            final payments = paymentSnapshot.data ?? const <Payment>[];
-
-            final pendingCount = installments
-                .where((item) => item.outstandingBalance > 0)
-                .length;
-            final overdueInstallments =
-                installments
-                    .where(
-                      (item) =>
-                          item.outstandingBalance > 0 &&
-                          item.dueDate.isBefore(
-                            DateTime(
-                              today.year,
-                              today.month,
-                              today.day,
-                              23,
-                              59,
-                              59,
-                            ),
-                          ),
-                    )
-                    .toList()
-                  ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
-            final overdueCount = overdueInstallments.length;
-            final monthPaymentsTotal = payments
-                .where(
-                  (payment) =>
-                      payment.paymentDate.isAfter(
-                        monthStart.subtract(const Duration(days: 1)),
-                      ) &&
-                      payment.paymentDate.isBefore(
-                        monthEnd.add(const Duration(days: 1)),
-                      ),
-                )
-                .fold<double>(0, (sum, payment) => sum + payment.amount);
-            final outstandingBalance = installments.fold<double>(
-              0,
-              (sum, item) => sum + item.outstandingBalance,
-            );
-            final recentPayments = payments
-              ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
-
-            final firstName = widget.user.name.split(' ').first;
-            final metrics = <_DashboardMetric>[
-              _DashboardMetric(
-                label: 'Pending Instalments',
-                value: pendingCount.toString(),
-                icon: Icons.account_balance_wallet_outlined,
-                color: const Color(0xFF2563EB),
-              ),
-              _DashboardMetric(
-                label: 'Overdue Payments',
-                value: overdueCount.toString(),
-                icon: Icons.warning_amber_rounded,
-                color: const Color(0xFFD97706),
-              ),
-              _DashboardMetric(
-                label: 'Payments Recorded This Month',
-                value: '₹${monthPaymentsTotal.toStringAsFixed(2)}',
-                icon: Icons.payments_outlined,
-                color: const Color(0xFF059669),
-              ),
-              _DashboardMetric(
-                label: 'Outstanding Balance',
-                value: '₹${outstandingBalance.toStringAsFixed(2)}',
-                icon: Icons.currency_rupee_rounded,
-                color: const Color(0xFF7C3AED),
-              ),
-            ];
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1440),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return FutureBuilder<List<_DashboardMetric>>(
+      future: _metrics,
+      builder: (context, snapshot) {
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
+        final metrics = snapshot.data ?? const <_DashboardMetric>[];
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1440),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Good to see you, $firstName.',
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(
-                                      color: AppTheme.ink,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Financial overview for ${_monthName(today.month)} ${today.year}.',
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(color: Colors.blueGrey.shade600),
-                              ),
-                            ],
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => setState(() {}),
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Refresh'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final columns = constraints.maxWidth >= 1120
-                            ? 4
-                            : constraints.maxWidth >= 600
-                            ? 2
-                            : 1;
-                        const gap = 16.0;
-                        final cardWidth =
-                            (constraints.maxWidth - gap * (columns - 1)) /
-                            columns;
-                        return Wrap(
-                          spacing: gap,
-                          runSpacing: gap,
-                          children: metrics
-                              .map(
-                                (metric) => SizedBox(
-                                  width: cardWidth,
-                                  child: _MetricCard(metric: metric),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Good to see you, $firstName.',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  color: AppTheme.ink,
+                                  fontWeight: FontWeight.w800,
                                 ),
-                              )
-                              .toList(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: _RecentPaymentsCard(
-                            payments: recentPayments.take(5).toList(),
-                            onSectionSelected: widget.onSectionSelected,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _OverdueInstalmentsCard(
-                            installments: overdueInstallments.take(5).toList(),
-                            onSectionSelected: widget.onSectionSelected,
+                          const SizedBox(height: 5),
+                          Text(
+                            widget.user.role == AppRole.counselor
+                                ? 'Your assigned student records.'
+                                : 'Your assigned training schedule.',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(color: Colors.blueGrey.shade600),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _QuickActionsCard(
-                      onSectionSelected: widget.onSectionSelected,
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'Last updated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                        style: TextStyle(
-                          color: Colors.blueGrey.shade600,
-                          fontSize: 12,
-                        ),
+                        ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh dashboard',
+                      onPressed: isLoading ? null : _refresh,
+                      icon: const Icon(Icons.refresh_rounded),
                     ),
                   ],
                 ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _QuickActionsCard extends StatelessWidget {
-  const _QuickActionsCard({required this.onSectionSelected});
-
-  final ValueChanged<String>? onSectionSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final actions = <({String label, String target, IconData icon})>[
-      (
-        label: 'View Fee Management',
-        target: 'fee-management',
-        icon: Icons.account_balance_wallet_rounded,
-      ),
-      (
-        label: 'View Payments',
-        target: 'payments',
-        icon: Icons.payments_rounded,
-      ),
-      (
-        label: 'View Fee Reports',
-        target: 'fee-reports',
-        icon: Icons.receipt_long_rounded,
-      ),
-      (
-        label: 'Open Reminder Drafts',
-        target: 'reminder-drafts',
-        icon: Icons.mark_email_unread_rounded,
-      ),
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Quick actions',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800, color: AppTheme.ink),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: actions.map((action) {
-                return ElevatedButton.icon(
-                  onPressed: onSectionSelected == null
-                      ? null
-                      : () => onSectionSelected!(action.target),
-                  icon: Icon(action.icon),
-                  label: Text(action.label),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentPaymentsCard extends StatelessWidget {
-  const _RecentPaymentsCard({
-    required this.payments,
-    required this.onSectionSelected,
-  });
-
-  final List<Payment> payments;
-  final ValueChanged<String>? onSectionSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Recent payments',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.ink,
-                    ),
+                const SizedBox(height: 24),
+                if (snapshot.hasError)
+                  _DashboardLoadError(error: snapshot.error!, onRetry: _refresh)
+                else if (isLoading)
+                  const LinearProgressIndicator()
+                else
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: metrics
+                        .map(
+                          (metric) => SizedBox(
+                            width: 260,
+                            child: _MetricCard(
+                              metric: metric,
+                              onTap: widget.onSectionSelected == null
+                                  ? null
+                                  : () => widget.onSectionSelected!(
+                                      metric.destinationId!,
+                                    ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
-                ),
-                TextButton(
-                  onPressed: onSectionSelected == null
-                      ? null
-                      : () => onSectionSelected!('payments'),
-                  child: const Text('View all'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (payments.isEmpty)
-              const Text('No payments recorded yet.')
-            else
-              ...payments.map(
-                (payment) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F0FF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.check_circle,
-                          color: AppTheme.brand,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '₹${payment.amount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              payment.paymentMethod,
-                              style: TextStyle(color: Colors.blueGrey.shade600),
-                            ),
-                            Text(
-                              payment.referenceNumber ??
-                                  'Reference unavailable',
-                              style: TextStyle(color: Colors.blueGrey.shade600),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        DateFormat('dd MMM yyyy').format(payment.paymentDate),
-                        style: TextStyle(color: Colors.blueGrey.shade600),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OverdueInstalmentsCard extends StatelessWidget {
-  const _OverdueInstalmentsCard({
-    required this.installments,
-    required this.onSectionSelected,
-  });
-
-  final List<FeeInstallment> installments;
-  final ValueChanged<String>? onSectionSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Overdue instalments',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.ink,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: onSectionSelected == null
-                      ? null
-                      : () => onSectionSelected!('fee-management'),
-                  child: const Text('Open'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (installments.isEmpty)
-              const Text('No overdue instalments right now.')
-            else
-              ...installments.map((item) {
-                final overdueDays = DateTime.now()
-                    .difference(item.dueDate)
-                    .inDays;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${item.studentName} (${item.studentId})',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              '₹${item.outstandingBalance.toStringAsFixed(2)} • Due ${DateFormat('dd MMM yyyy').format(item.dueDate)}',
-                              style: TextStyle(color: Colors.blueGrey.shade600),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '$overdueDays days',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFD97706),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FullPageError extends StatelessWidget {
-  const _FullPageError({required this.title, required this.message});
-
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline_rounded,
-                  size: 32,
-                  color: Color(0xFFD97706),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
+                  unavailableText,
                   style: TextStyle(color: Colors.blueGrey.shade600),
                 ),
               ],
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
-
-String _monthName(int month) => switch (month) {
-  1 => 'January',
-  2 => 'February',
-  3 => 'March',
-  4 => 'April',
-  5 => 'May',
-  6 => 'June',
-  7 => 'July',
-  8 => 'August',
-  9 => 'September',
-  10 => 'October',
-  11 => 'November',
-  _ => 'December',
-};
 
 class PlaceholderSection extends StatelessWidget {
   const PlaceholderSection({
@@ -1130,38 +674,45 @@ class PlaceholderSection extends StatelessWidget {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.metric});
+  const _MetricCard({required this.metric, this.onTap});
 
   final _DashboardMetric metric;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: metric.color.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: metric.color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(metric.icon, color: metric.color, size: 21),
               ),
-              child: Icon(metric.icon, color: metric.color, size: 21),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              metric.value,
-              style: Theme.of(context).textTheme.headlineMedium
-                  ?.copyWith(color: AppTheme.ink, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              metric.label,
-              style: TextStyle(color: Colors.blueGrey.shade600),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                metric.value,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                metric.label,
+                style: TextStyle(color: Colors.blueGrey.shade600),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1174,147 +725,72 @@ class _DashboardMetric {
     required this.value,
     required this.icon,
     required this.color,
+    this.destinationId,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final Color color;
+  final String? destinationId;
 }
 
-class _DashboardData {
-  const _DashboardData({required this.subtitle, required this.metrics});
+class _DashboardLoadError extends StatelessWidget {
+  const _DashboardLoadError({required this.error, required this.onRetry});
 
-  final String subtitle;
-  final List<_DashboardMetric> metrics;
+  final Object error;
+  final VoidCallback onRetry;
 
-  factory _DashboardData.forRole(AppRole role) => switch (role) {
-    AppRole.owner => const _DashboardData(
-      subtitle: 'Here is your institute overview for today.',
-      metrics: [
-        _DashboardMetric(
-          label: 'Total students',
-          value: '1,248',
-          icon: Icons.people_alt_outlined,
-          color: Color(0xFF2563EB),
-        ),
-        _DashboardMetric(
-          label: 'Active batches',
-          value: '42',
-          icon: Icons.groups_outlined,
-          color: Color(0xFF7C3AED),
-        ),
-        _DashboardMetric(
-          label: 'Today\'s classes',
-          value: '18',
-          icon: Icons.calendar_month_outlined,
-          color: Color(0xFF0891B2),
-        ),
-        _DashboardMetric(
-          label: 'Pending approvals',
-          value: '7',
-          icon: Icons.task_alt_outlined,
-          color: Color(0xFFD97706),
-        ),
-      ],
-    ),
-    AppRole.counselor => const _DashboardData(
-      subtitle: 'Focus on the conversations that need your attention.',
-      metrics: [
-        _DashboardMetric(
-          label: 'Students to follow up',
-          value: '24',
-          icon: Icons.forum_outlined,
-          color: Color(0xFF2563EB),
-        ),
-        _DashboardMetric(
-          label: 'New student enquiries',
-          value: '12',
-          icon: Icons.mark_email_unread_outlined,
-          color: Color(0xFF7C3AED),
-        ),
-        _DashboardMetric(
-          label: 'Students needing support',
-          value: '9',
-          icon: Icons.volunteer_activism_outlined,
-          color: Color(0xFFD97706),
-        ),
-      ],
-    ),
-    AppRole.trainer => const _DashboardData(
-      subtitle: 'Your training day at a glance.',
-      metrics: [
-        _DashboardMetric(
-          label: 'Assigned batches',
-          value: '5',
-          icon: Icons.groups_outlined,
-          color: Color(0xFF2563EB),
-        ),
-        _DashboardMetric(
-          label: 'Today\'s classes',
-          value: '4',
-          icon: Icons.calendar_month_outlined,
-          color: Color(0xFF7C3AED),
-        ),
-        _DashboardMetric(
-          label: 'Attendance pending',
-          value: '2',
-          icon: Icons.fact_check_outlined,
-          color: Color(0xFFD97706),
-        ),
-      ],
-    ),
-    AppRole.accounts => const _DashboardData(
-      subtitle: 'A quick view of fee operations for this month.',
-      metrics: [
-        _DashboardMetric(
-          label: 'Pending instalments',
-          value: '36',
-          icon: Icons.account_balance_wallet_outlined,
-          color: Color(0xFF2563EB),
-        ),
-        _DashboardMetric(
-          label: 'Overdue payments',
-          value: '14',
-          icon: Icons.warning_amber_rounded,
-          color: Color(0xFFD97706),
-        ),
-        _DashboardMetric(
-          label: 'Payments recorded this month',
-          value: '₹4.8L',
-          icon: Icons.payments_outlined,
-          color: Color(0xFF059669),
-        ),
-      ],
-    ),
-  };
-}
-
-class _DemoDataNotice extends StatelessWidget {
-  const _DemoDataNotice();
+  String get _message {
+    if (error is _DashboardQueryFailure) {
+      final failure = error as _DashboardQueryFailure;
+      if (failure.requiresIndex) {
+        return 'Firestore needs a composite index for ${failure.queryName}. '
+            'Deploy the configured index and wait for it to finish building, '
+            'then retry. ${failure.firebaseError.message ?? ''}';
+      }
+      return '${failure.queryName} failed: '
+          '${failure.firebaseError.message ?? failure.firebaseError.code}';
+    }
+    return 'Dashboard data is unavailable: $error';
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7E6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Row(
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, color: Color(0xFF9A6700), size: 20),
-          SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              'Demo data only — these overview values are not connected to Firestore.',
-              style: TextStyle(color: Color(0xFF7A4B00)),
-            ),
+          const Icon(Icons.cloud_off_outlined, color: Color(0xFFB42318)),
+          const SizedBox(width: 12),
+          Expanded(child: Text(_message)),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Retry'),
           ),
         ],
       ),
-    );
+    ),
+  );
+}
+
+class _DashboardQueryFailure implements Exception {
+  const _DashboardQueryFailure(this.queryName, this.firebaseError);
+
+  final String queryName;
+  final FirebaseException firebaseError;
+
+  bool get requiresIndex =>
+      firebaseError.code == 'failed-precondition' &&
+      (firebaseError.message?.toLowerCase().contains('index') ?? false);
+}
+
+Future<T> _dashboardQuery<T>(String queryName, Future<T> query) async {
+  try {
+    return await query;
+  } on FirebaseException catch (error) {
+    throw _DashboardQueryFailure(queryName, error);
   }
 }
 

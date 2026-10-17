@@ -26,12 +26,14 @@ class AppUser {
     required this.name,
     required this.email,
     required this.role,
+    this.instituteId = 'demo-institute',
   });
 
   final String id;
   final String name;
   final String email;
   final AppRole role;
+  final String instituteId;
 
   static AppRole? roleFromString(String? value) =>
       switch ((value ?? '').trim().toLowerCase()) {

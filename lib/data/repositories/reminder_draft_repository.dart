@@ -16,10 +16,13 @@ class ReminderDraftRepository {
   }) {
     return _drafts
         .where('instituteId', isEqualTo: instituteId)
-        .orderBy('updatedAt', descending: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs.map(ReminderDraft.fromFirestore).toList(),
+          (snapshot) {
+            final list = snapshot.docs.map(ReminderDraft.fromFirestore).toList();
+            list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+            return list;
+          },
         );
   }
 
@@ -28,9 +31,10 @@ class ReminderDraftRepository {
   }) async {
     final snapshot = await _drafts
         .where('instituteId', isEqualTo: instituteId)
-        .orderBy('updatedAt', descending: true)
         .get();
-    return snapshot.docs.map(ReminderDraft.fromFirestore).toList();
+    final list = snapshot.docs.map(ReminderDraft.fromFirestore).toList();
+    list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return list;
   }
 
   Future<ReminderDraft?> getDraftForInstallment({

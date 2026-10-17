@@ -146,7 +146,9 @@ class AttendanceService {
   ) {
     final totals = <String, List<AttendanceRecord>>{};
     for (final record in records) {
-      totals.putIfAbsent(record.studentId, () => <AttendanceRecord>[]).add(record);
+      totals
+          .putIfAbsent(record.studentId, () => <AttendanceRecord>[])
+          .add(record);
     }
     return totals.entries
         .map(
@@ -163,9 +165,16 @@ class AttendanceService {
   }
 
   AttendanceAccessScope _scopeFor(AppUser user) => switch (user.role) {
-    AppRole.owner || AppRole.accounts => const AttendanceAccessScope(),
-    AppRole.counselor => AttendanceAccessScope(counselorId: user.id),
-    AppRole.trainer => AttendanceAccessScope(trainerId: user.id),
+    AppRole.owner ||
+    AppRole.accounts => AttendanceAccessScope(instituteId: user.instituteId),
+    AppRole.counselor => AttendanceAccessScope(
+      instituteId: user.instituteId,
+      counselorId: user.id,
+    ),
+    AppRole.trainer => AttendanceAccessScope(
+      instituteId: user.instituteId,
+      trainerId: user.id,
+    ),
   };
 
   void _ensureCanManage(AppUser user) {

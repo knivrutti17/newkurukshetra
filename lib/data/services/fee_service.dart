@@ -55,6 +55,13 @@ class FeeService {
     return _repository.getInstallments(scope: _scopeFor(user));
   }
 
+  Future<FeeInstallment?> getInstallmentById(AppUser user, String installmentId) {
+    if (!canView(user)) {
+      return Future.value(null);
+    }
+    return _repository.getInstallment(installmentId);
+  }
+
   Stream<List<Payment>> watchPaymentsForInstallment(
     AppUser user,
     String installmentId,
@@ -175,7 +182,8 @@ class FeeService {
     );
   }
 
-  FeeAccessScope _scopeFor(AppUser user) => const FeeAccessScope();
+  FeeAccessScope _scopeFor(AppUser user) =>
+      FeeAccessScope(instituteId: user.instituteId);
 
   void _ensureCanManage(AppUser user) {
     if (!canManage(user)) {
@@ -196,4 +204,3 @@ class FeeService {
     }
   }
 }
-

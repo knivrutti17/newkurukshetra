@@ -42,7 +42,8 @@ class CourseService {
     return _repository.archiveCourse(course);
   }
 
-  CourseAccessScope _scopeFor(AppUser user) => const CourseAccessScope();
+  CourseAccessScope _scopeFor(AppUser user) =>
+      CourseAccessScope(instituteId: user.instituteId);
 
   void _ensureCanManage(AppUser user) {
     if (!canManage(user)) {
@@ -64,4 +65,3 @@ class CourseService {
     }
   }
 }
-

@@ -23,10 +23,10 @@ class TimetableService {
     TimetableRepository? timetableRepository,
     BatchRepository? batchRepository,
     TrainerRepository? trainerRepository,
-  })  : _timetableRepository =
-            timetableRepository ?? FirestoreTimetableRepository(),
-        _batchRepository = batchRepository ?? FirestoreBatchRepository(),
-        _trainerRepository = trainerRepository ?? FirestoreTrainerRepository();
+  }) : _timetableRepository =
+           timetableRepository ?? FirestoreTimetableRepository(),
+       _batchRepository = batchRepository ?? FirestoreBatchRepository(),
+       _trainerRepository = trainerRepository ?? FirestoreTrainerRepository();
 
   final TimetableRepository _timetableRepository;
   final BatchRepository _batchRepository;
@@ -100,9 +100,9 @@ class TimetableService {
         scope: BatchAccessScope(instituteId: session.instituteId),
       );
       batch = batches.cast<Batch?>().firstWhere(
-            (b) => b?.id == session.batchId,
-            orElse: () => null,
-          );
+        (b) => b?.id == session.batchId,
+        orElse: () => null,
+      );
     }
 
     return ClashDetectionEngine.detectConflicts(
@@ -163,7 +163,7 @@ class TimetableService {
   }) {
     if (user.role == AppRole.trainer) {
       return TimetableAccessScope(
-        instituteId: 'demo-institute',
+        instituteId: user.instituteId,
         trainerId: user.id,
         batchId: batchId,
         startDate: startDate,
@@ -172,7 +172,7 @@ class TimetableService {
     }
 
     return TimetableAccessScope(
-      instituteId: 'demo-institute',
+      instituteId: user.instituteId,
       trainerId: trainerId,
       batchId: batchId,
       startDate: startDate,
@@ -208,4 +208,3 @@ class TimetableService {
     }
   }
 }
-

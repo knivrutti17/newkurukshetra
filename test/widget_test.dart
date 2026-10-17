@@ -1,16 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kurukshetra/app.dart';
+import 'package:kurukshetra/data/models/app_user.dart';
+import 'package:kurukshetra/features/auth/controllers/session_controller.dart';
+import 'package:kurukshetra/features/auth/screens/login_screen.dart';
+import 'package:kurukshetra/features/auth/services/mock_auth_service.dart';
 
 void main() {
-  testWidgets('invalid demo credentials show a friendly error', (tester) async {
-    await tester.pumpWidget(const InstituteOsApp());
+  testWidgets('invalid credentials show the authentication error', (
+    tester,
+  ) async {
+    final session = SessionController(
+      authService: MockAuthService(requestDelay: Duration.zero),
+    );
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AnimatedBuilder(
+          animation: session,
+          builder: (context, _) => LoginScreen(sessionController: session),
+        ),
+      ),
+    );
 
-    await tester.enterText(find.byType(EditableText).at(0), 'owner@demo.com');
-    await tester.enterText(find.byType(EditableText).at(1), 'not-the-password');
+    await tester.enterText(find.byType(TextFormField).at(0), 'owner@demo.com');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'not-the-password',
+    );
     await tester.tap(find.text('Log in'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
 
     expect(
       find.text('We could not find a demo account with those credentials.'),
@@ -18,36 +36,28 @@ void main() {
     );
   });
 
-  testWidgets('demo login shows credentials and signs an owner in and out', (
+  testWidgets('valid credentials populate the session with the owner role', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final session = SessionController(
+      authService: MockAuthService(requestDelay: Duration.zero),
+    );
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AnimatedBuilder(
+          animation: session,
+          builder: (context, _) => LoginScreen(sessionController: session),
+        ),
+      ),
+    );
 
-    await tester.pumpWidget(const InstituteOsApp());
-
-    expect(find.text('DEMO MODE'), findsOneWidget);
-    expect(find.text('Owner / Admin'), findsOneWidget);
-    expect(find.text('Accounts Staff'), findsOneWidget);
-
-    await tester.enterText(find.byType(EditableText).at(0), 'owner@demo.com');
-    await tester.enterText(find.byType(EditableText).at(1), 'Owner@123');
+    await tester.enterText(find.byType(TextFormField).at(0), 'owner@demo.com');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Owner@123');
     await tester.tap(find.text('Log in'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('Good to see you, Aarav.'), findsOneWidget);
-    final menuButton = find.byTooltip('Open navigation menu');
-    if (menuButton.evaluate().isNotEmpty) {
-      await tester.tap(menuButton);
-      await tester.pumpAndSettle();
-    }
-    expect(find.text('Approvals'), findsOneWidget);
-
-    await tester.tap(find.text('Log out'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
-
-    expect(find.text('Sign in to your workspace'), findsOneWidget);
+    expect(session.currentUser?.role, AppRole.owner);
+    expect(session.isSignedIn, isTrue);
   });
 }

@@ -43,14 +43,14 @@ class ReminderDraftService {
     if (!canView(user)) {
       return Stream.value(const <ReminderDraft>[]);
     }
-    return _repository.watchDrafts(instituteId: 'demo-institute');
+    return _repository.watchDrafts(instituteId: user.instituteId);
   }
 
   Future<List<ReminderDraft>> getDraftsForUser(AppUser user) {
     if (!canView(user)) {
       return Future.value(const <ReminderDraft>[]);
     }
-    return _repository.getDrafts(instituteId: 'demo-institute');
+    return _repository.getDrafts(instituteId: user.instituteId);
   }
 
   Future<ReminderDraft> saveDraftForUser(
@@ -145,7 +145,7 @@ class ReminderDraftService {
       locale: 'en_IN',
     ).format(outstandingAmount);
     final formattedDate = DateFormat('dd/MM/yyyy').format(dueDate);
-    return 'Hello $studentName, our records show an outstanding instalment of $formattedAmount for your course. The due date was $formattedDate. Please contact the accounts team if you have already made the payment or need assistance.';
+    return 'Hello $studentName, our records show an outstanding instalment of $formattedAmount for your course, due on $formattedDate. If you have already paid, please contact the accounts team so we can verify your payment. Please contact us if you need assistance.';
   }
 
   void _ensureCanManage(AppUser user) {

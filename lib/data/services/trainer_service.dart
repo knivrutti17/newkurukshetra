@@ -17,8 +17,8 @@ class TrainerService {
   TrainerService({
     TrainerRepository? repository,
     BatchRepository? batchRepository,
-  })  : _repository = repository ?? FirestoreTrainerRepository(),
-        _batchRepository = batchRepository ?? FirestoreBatchRepository();
+  }) : _repository = repository ?? FirestoreTrainerRepository(),
+       _batchRepository = batchRepository ?? FirestoreBatchRepository();
 
   final TrainerRepository _repository;
   final BatchRepository _batchRepository;
@@ -26,8 +26,7 @@ class TrainerService {
   TrainerRepository get repository => _repository;
   BatchRepository get batchRepository => _batchRepository;
 
-  static final _emailRegex =
-      RegExp(r'^[\w\.\-]+@[\w\-]+(\.[\w\-]+)+$');
+  static final _emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+(\.[\w\-]+)+$');
 
   bool canManage(AppUser user) => user.role == AppRole.owner;
 
@@ -37,8 +36,7 @@ class TrainerService {
   Future<List<Trainer>> getForUser(AppUser user) =>
       _repository.getTrainers(scope: _scopeFor(user));
 
-  Future<Trainer?> getTrainerById(String id) =>
-      _repository.getTrainerById(id);
+  Future<Trainer?> getTrainerById(String id) => _repository.getTrainerById(id);
 
   Future<Trainer> createTrainer(AppUser user, Trainer trainer) async {
     _ensureCanManage(user);
@@ -112,14 +110,15 @@ class TrainerService {
       scope: BatchAccessScope(instituteId: trainer.instituteId),
     );
     final batch = batches.cast<Batch?>().firstWhere(
-          (b) => b?.id == batchId,
-          orElse: () => null,
-        );
+      (b) => b?.id == batchId,
+      orElse: () => null,
+    );
     if (batch == null) {
       throw const TrainerValidationException('Batch not found.');
     }
 
-    if (batch.trainerId == trainer.id && batch.trainerName == trainer.fullName) {
+    if (batch.trainerId == trainer.id &&
+        batch.trainerName == trainer.fullName) {
       return batch;
     }
 
@@ -137,27 +136,27 @@ class TrainerService {
     _ensureCanManage(user);
 
     final batches = await _batchRepository.getBatches(
-      scope: const BatchAccessScope(instituteId: 'demo-institute'),
+      scope: BatchAccessScope(instituteId: user.instituteId),
     );
     final batch = batches.cast<Batch?>().firstWhere(
-          (b) => b?.id == batchId,
-          orElse: () => null,
-        );
+      (b) => b?.id == batchId,
+      orElse: () => null,
+    );
     if (batch == null) {
       throw const TrainerValidationException('Batch not found.');
     }
 
-    final updated = batch.copyWith(
-      trainerId: '',
-      trainerName: 'Unassigned',
-    );
+    final updated = batch.copyWith(trainerId: '', trainerName: 'Unassigned');
     return _batchRepository.updateBatch(updated);
   }
 
   TrainerAccessScope _scopeFor(AppUser user) => switch (user.role) {
-        AppRole.trainer => TrainerAccessScope(trainerId: user.id),
-        _ => const TrainerAccessScope(),
-      };
+    AppRole.trainer => TrainerAccessScope(
+      instituteId: user.instituteId,
+      trainerId: user.id,
+    ),
+    _ => TrainerAccessScope(instituteId: user.instituteId),
+  };
 
   void _ensureCanManage(AppUser user) {
     if (!canManage(user)) {

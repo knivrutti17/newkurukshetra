@@ -68,8 +68,8 @@ class StudentRiskAlertService {
       .watchAlerts(_scopeFor(user))
       .map((alerts) => alerts.where((alert) => canView(user, alert)).toList());
 
-  Future<DateTime?> getLastSuccessfulScan() =>
-      _alertRepository.getLastSuccessfulScan(instituteId);
+  Future<DateTime?> getLastSuccessfulScan({String? forInstituteId}) =>
+      _alertRepository.getLastSuccessfulScan(forInstituteId ?? instituteId);
 
   Future<RiskScanResult> runScan(AppUser user, {DateTime? now}) async {
     if (!canRunScan(user)) {
@@ -77,7 +77,8 @@ class StudentRiskAlertService {
         'Only the Owner can run an institute-wide risk scan.',
       );
     }
-    final data = await _scanDataRepository.loadInstituteData(instituteId);
+    final scanInstituteId = _instituteIdFor(user);
+    final data = await _scanDataRepository.loadInstituteData(scanInstituteId);
     final completedAt = now ?? DateTime.now();
     final candidates = _ruleEngine.evaluate(
       students: data.students,
@@ -88,14 +89,14 @@ class StudentRiskAlertService {
       includeFinancialRules: true,
     );
     final write = await _alertRepository.synchronizeScan(
-      instituteId: instituteId,
+      instituteId: scanInstituteId,
       candidates: candidates,
       now: completedAt,
     );
     // This is intentionally written last: failures in source reads or alert
     // writes never claim a successful completed scan.
     await _alertRepository.recordSuccessfulScan(
-      instituteId: instituteId,
+      instituteId: scanInstituteId,
       completedAt: completedAt,
       completedBy: user.id,
     );
@@ -145,22 +146,25 @@ class StudentRiskAlertService {
   }
 
   AlertAccessScope _scopeFor(AppUser user) => switch (user.role) {
-    AppRole.owner => AlertAccessScope(instituteId: instituteId),
+    AppRole.owner => AlertAccessScope(instituteId: _instituteIdFor(user)),
     AppRole.counselor => AlertAccessScope(
-      instituteId: instituteId,
+      instituteId: _instituteIdFor(user),
       counselorId: user.id,
       academicOnly: true,
     ),
     AppRole.trainer => AlertAccessScope(
-      instituteId: instituteId,
+      instituteId: _instituteIdFor(user),
       trainerId: user.id,
       academicOnly: true,
     ),
     AppRole.accounts => AlertAccessScope(
-      instituteId: instituteId,
+      instituteId: _instituteIdFor(user),
       financialOnly: true,
     ),
   };
+
+  String _instituteIdFor(AppUser user) =>
+      user.instituteId == 'demo-institute' ? instituteId : user.instituteId;
 
   void _validateUpdate({
     required AppUser user,

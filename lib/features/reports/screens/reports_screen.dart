@@ -144,21 +144,29 @@ class _ReportsScreenState extends State<ReportsScreen>
         batchesFuture,
         coursesFuture,
         if (role == AppRole.owner || role == AppRole.counselor || role == AppRole.accounts)
-          _reportsService.getOperationalSummary(),
+          _reportsService.getOperationalSummary(
+            instituteId: widget.user.instituteId,
+          ),
         if (role == AppRole.owner || role == AppRole.counselor)
           _reportsService.getStudentReport(
+            instituteId: widget.user.instituteId,
             courseFilter: _selectedCourseId,
             batchFilter: _selectedBatchId,
           ),
         if (role == AppRole.owner || role == AppRole.counselor || role == AppRole.trainer)
           _reportsService.getAttendanceReport(
+            instituteId: widget.user.instituteId,
             batchId: _selectedBatchId,
             threshold: _attendanceThreshold,
           ),
         if (role == AppRole.owner || role == AppRole.accounts)
-          _reportsService.getFeeReport(),
+          _reportsService.getFeeReport(
+            instituteId: widget.user.instituteId,
+          ),
         if (role == AppRole.owner || role == AppRole.trainer)
-          _reportsService.getTrainerTimetableReport(),
+          _reportsService.getTrainerTimetableReport(
+            instituteId: widget.user.instituteId,
+          ),
       ]);
 
       if (!mounted) return;

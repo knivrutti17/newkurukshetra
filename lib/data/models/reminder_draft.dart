@@ -80,7 +80,7 @@ class ReminderDraft {
     required String feeInstallmentId,
     required String createdBy,
     required FeeInstallment installment,
-    String messageTemplate = 'Hello {studentName}, our records show an outstanding instalment of {outstandingAmount} for your course. The due date was {dueDate}. Please contact the accounts team if you have already made the payment or need assistance.',
+    String messageTemplate = 'Hello {studentName}, our records show an outstanding instalment of {outstandingAmount} for your course, due on {dueDate}. If you have already paid, please contact the accounts team so we can verify your payment. Please contact us if you need assistance.',
   }) {
     final now = DateTime.now();
     final formattedAmount = NumberFormat.currency(

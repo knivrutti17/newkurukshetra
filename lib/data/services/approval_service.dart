@@ -14,7 +14,7 @@ class ApprovalValidationException implements Exception {
 /// Coordinates workflow for administrative and academic approvals.
 class ApprovalService {
   ApprovalService({ApprovalRepository? repository})
-      : _repository = repository ?? FirestoreApprovalRepository();
+    : _repository = repository ?? FirestoreApprovalRepository();
 
   final ApprovalRepository _repository;
 
@@ -26,8 +26,7 @@ class ApprovalService {
   bool canReview(AppUser user, ApprovalAction action) {
     if (user.role == AppRole.owner) return true;
     if (user.role == AppRole.accounts) {
-      return action.type == 'fee_concession' ||
-          action.type == 'refund_request';
+      return action.type == 'fee_concession' || action.type == 'refund_request';
     }
     return false;
   }
@@ -41,7 +40,7 @@ class ApprovalService {
   }) {
     return _repository.watchActions(
       scope: ApprovalAccessScope(
-        instituteId: 'demo-institute',
+        instituteId: user.instituteId,
         status: status,
         type: type,
         startDate: startDate,
@@ -59,7 +58,7 @@ class ApprovalService {
   }) {
     return _repository.getActions(
       scope: ApprovalAccessScope(
-        instituteId: 'demo-institute',
+        instituteId: user.instituteId,
         status: status,
         type: type,
         startDate: startDate,
@@ -71,10 +70,7 @@ class ApprovalService {
   Future<ApprovalAction?> getActionById(String id) =>
       _repository.getActionById(id);
 
-  Future<ApprovalAction> approveAction(
-    AppUser user,
-    String actionId,
-  ) async {
+  Future<ApprovalAction> approveAction(AppUser user, String actionId) async {
     final existing = await _repository.getActionById(actionId);
     if (existing == null) {
       throw const ApprovalValidationException('Action record not found.');
@@ -150,4 +146,3 @@ class ApprovalService {
     return _repository.createAction(action);
   }
 }
-

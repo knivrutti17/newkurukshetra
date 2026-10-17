@@ -53,8 +53,11 @@ class BatchService {
   }
 
   BatchAccessScope _scopeFor(AppUser user) => switch (user.role) {
-    AppRole.trainer => BatchAccessScope(trainerId: user.id),
-    _ => const BatchAccessScope(),
+    AppRole.trainer => BatchAccessScope(
+      instituteId: user.instituteId,
+      trainerId: user.id,
+    ),
+    _ => BatchAccessScope(instituteId: user.instituteId),
   };
 
   void _ensureCanManage(AppUser user) {
@@ -70,13 +73,19 @@ class BatchService {
       throw const BatchValidationException('Batch name is required.');
     }
     if (batch.courseId.trim().isEmpty) {
-      throw const BatchValidationException('Please select a course for the batch.');
+      throw const BatchValidationException(
+        'Please select a course for the batch.',
+      );
     }
     if (batch.trainerId.trim().isEmpty) {
-      throw const BatchValidationException('Please select a trainer for the batch.');
+      throw const BatchValidationException(
+        'Please select a trainer for the batch.',
+      );
     }
     if (batch.capacity <= 0) {
-      throw const BatchValidationException('Batch capacity must be greater than 0.');
+      throw const BatchValidationException(
+        'Batch capacity must be greater than 0.',
+      );
     }
     if (batch.endDate.isBefore(batch.startDate)) {
       throw const BatchValidationException(
@@ -85,4 +94,3 @@ class BatchService {
     }
   }
 }
-

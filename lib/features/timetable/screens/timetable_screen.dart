@@ -1765,7 +1765,7 @@ class _ClassSessionFormDialogState extends State<_ClassSessionFormDialog> {
     final now = DateTime.now();
     return ClassSession(
       id: widget.session?.id ?? '',
-      instituteId: 'demo-institute',
+      instituteId: widget.user.instituteId,
       batchId: _selectedBatchId ?? '',
       batchName: batch?.name ?? '',
       courseId: batch?.courseId ?? '',

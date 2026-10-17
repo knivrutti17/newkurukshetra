@@ -678,7 +678,7 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
       final fee = double.tryParse(_feeController.text.trim()) ?? 0.0;
       final draft = Course(
         id: widget.course?.id ?? '',
-        instituteId: widget.course?.instituteId ?? 'demo-institute',
+        instituteId: widget.course?.instituteId ?? widget.user.instituteId,
         name: _nameController.text.trim(),
         duration: _durationController.text.trim(),
         feeAmount: fee,
@@ -1307,7 +1307,7 @@ class _BatchFormDialogState extends State<_BatchFormDialog> {
 
       final draft = Batch(
         id: widget.batch?.id ?? '',
-        instituteId: widget.batch?.instituteId ?? 'demo-institute',
+        instituteId: widget.batch?.instituteId ?? widget.user.instituteId,
         name: _nameController.text.trim(),
         courseId: _selectedCourseId!,
         courseName: course?.name ?? (widget.batch?.courseName ?? ''),
@@ -1487,9 +1487,13 @@ class _BatchFormDialogState extends State<_BatchFormDialog> {
                           hintText: 'e.g. 25',
                         ),
                         validator: (val) {
-                          if (val == null || val.trim().isEmpty) return 'Capacity is required';
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Capacity is required';
+                          }
                           final cap = int.tryParse(val.trim());
-                          if (cap == null || cap <= 0) return 'Must be > 0';
+                          if (cap == null || cap <= 0) {
+                            return 'Must be > 0';
+                          }
                           return null;
                         },
                       ),

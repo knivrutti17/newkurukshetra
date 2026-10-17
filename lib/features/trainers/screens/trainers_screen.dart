@@ -1222,7 +1222,7 @@ class _TrainerFormDialogState extends State<_TrainerFormDialog> {
 
       final draft = Trainer(
         id: widget.trainer?.id ?? '',
-        instituteId: widget.trainer?.instituteId ?? 'demo-institute',
+        instituteId: widget.trainer?.instituteId ?? widget.user.instituteId,
         fullName: _nameController.text.trim(),
         email: _emailController.text.trim(),
         emailNormalized: _emailController.text.trim().toLowerCase(),

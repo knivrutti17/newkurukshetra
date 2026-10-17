@@ -1189,7 +1189,7 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
 
     final draft = Student(
       id: widget.student?.id ?? '',
-      instituteId: widget.student?.instituteId ?? 'demo-institute',
+      instituteId: widget.student?.instituteId ?? widget.user.instituteId,
       fullName: _nameController.text.trim(),
       email: _emailController.text.trim().toLowerCase(),
       phone: _phoneController.text.trim(),

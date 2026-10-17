@@ -82,6 +82,13 @@ class FirebaseAuthService implements AuthService {
       );
     }
 
+    final instituteId = (data['instituteId'] as String?)?.trim();
+    if (instituteId == null || instituteId.isEmpty) {
+      throw const AuthException(
+        'This account has no institute assigned. Contact the owner for access.',
+      );
+    }
+
     return AppUser(
       id: firebaseUser.uid,
       name:
@@ -90,6 +97,7 @@ class FirebaseAuthService implements AuthService {
           'Institute User',
       email: (data['email'] as String?) ?? firebaseUser.email ?? '',
       role: role,
+      instituteId: instituteId,
     );
   }
 
