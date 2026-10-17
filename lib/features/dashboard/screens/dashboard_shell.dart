@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/routing/role_navigation.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/app_user.dart';
+import '../../../data/models/fee_installment.dart';
+import '../../../data/models/payment.dart';
+import '../../../data/repositories/fee_repository.dart';
+import '../../../data/services/fee_service.dart';
 import '../../auth/controllers/session_controller.dart';
 import '../../approvals/screens/approvals_screen.dart';
 import '../../attendance/screens/attendance_screen.dart';
 import '../../copilot/screens/copilot_screen.dart';
 import '../../courses_batches/screens/courses_batches_screen.dart';
 import '../../fees/screens/fee_management_screen.dart';
+import '../../reminders/screens/reminder_drafts_screen.dart';
 import '../../reports/screens/reports_screen.dart';
 import '../../risk_alerts/screens/student_risk_alerts_screen.dart';
 import '../../students/screens/students_screen.dart';
@@ -105,7 +111,10 @@ class _DashboardShellState extends State<DashboardShell> {
       return const CopilotScreen();
     }
     if (_selectedId == 'dashboard') {
-      return DashboardOverview(user: widget.user);
+      return DashboardOverview(
+        user: widget.user,
+        onSectionSelected: _selectSection,
+      );
     }
     if (_selectedId == 'students') {
       return StudentsScreen(
@@ -160,6 +169,12 @@ class _DashboardShellState extends State<DashboardShell> {
     }
     if (_selectedId == 'reports' || _selectedId == 'fee-reports') {
       return ReportsScreen(
+        user: widget.user,
+        firebaseSetupMessage: widget.firebaseSetupMessage,
+      );
+    }
+    if (_selectedId == 'reminder-drafts') {
+      return ReminderDraftsScreen(
         user: widget.user,
         firebaseSetupMessage: widget.firebaseSetupMessage,
       );
@@ -379,12 +394,24 @@ class _UserPanel extends StatelessWidget {
 }
 
 class DashboardOverview extends StatelessWidget {
-  const DashboardOverview({required this.user, super.key});
+  const DashboardOverview({
+    required this.user,
+    this.onSectionSelected,
+    super.key,
+  });
 
   final AppUser user;
+  final ValueChanged<String>? onSectionSelected;
 
   @override
   Widget build(BuildContext context) {
+    if (user.role == AppRole.accounts) {
+      return AccountsDashboardScreen(
+        user: user,
+        onSectionSelected: onSectionSelected,
+      );
+    }
+
     final data = _DashboardData.forRole(user.role);
     final firstName = user.name.split(' ').first;
 
@@ -499,6 +526,544 @@ class DashboardOverview extends StatelessWidget {
     );
   }
 }
+
+class AccountsDashboardScreen extends StatefulWidget {
+  const AccountsDashboardScreen({
+    required this.user,
+    this.onSectionSelected,
+    super.key,
+  });
+
+  final AppUser user;
+  final ValueChanged<String>? onSectionSelected;
+
+  @override
+  State<AccountsDashboardScreen> createState() =>
+      _AccountsDashboardScreenState();
+}
+
+class _AccountsDashboardScreenState extends State<AccountsDashboardScreen> {
+  late final FeeService _feeService;
+  late final FirestoreFeeRepository _feeRepository;
+
+  @override
+  void initState() {
+    super.initState();
+    _feeService = FeeService();
+    _feeRepository = FirestoreFeeRepository();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final monthStart = DateTime(today.year, today.month, 1);
+    final monthEnd = DateTime(today.year, today.month + 1, 0, 23, 59, 59);
+
+    return StreamBuilder<List<FeeInstallment>>(
+      stream: _feeService.watchInstallmentsForUser(widget.user),
+      initialData: const <FeeInstallment>[],
+      builder: (context, installmentSnapshot) {
+        if (installmentSnapshot.hasError) {
+          return _FullPageError(
+            title: 'Unable to load financial dashboard',
+            message: installmentSnapshot.error.toString(),
+          );
+        }
+
+        return StreamBuilder<List<Payment>>(
+          stream: _feeRepository.watchAllPayments(
+            scope: const FeeAccessScope(),
+          ),
+          initialData: const <Payment>[],
+          builder: (context, paymentSnapshot) {
+            if (paymentSnapshot.hasError) {
+              return _FullPageError(
+                title: 'Unable to load payment history',
+                message: paymentSnapshot.error.toString(),
+              );
+            }
+
+            final installments =
+                installmentSnapshot.data ?? const <FeeInstallment>[];
+            final payments = paymentSnapshot.data ?? const <Payment>[];
+
+            final pendingCount = installments
+                .where((item) => item.outstandingBalance > 0)
+                .length;
+            final overdueInstallments =
+                installments
+                    .where(
+                      (item) =>
+                          item.outstandingBalance > 0 &&
+                          item.dueDate.isBefore(
+                            DateTime(
+                              today.year,
+                              today.month,
+                              today.day,
+                              23,
+                              59,
+                              59,
+                            ),
+                          ),
+                    )
+                    .toList()
+                  ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+            final overdueCount = overdueInstallments.length;
+            final monthPaymentsTotal = payments
+                .where(
+                  (payment) =>
+                      payment.paymentDate.isAfter(
+                        monthStart.subtract(const Duration(days: 1)),
+                      ) &&
+                      payment.paymentDate.isBefore(
+                        monthEnd.add(const Duration(days: 1)),
+                      ),
+                )
+                .fold<double>(0, (sum, payment) => sum + payment.amount);
+            final outstandingBalance = installments.fold<double>(
+              0,
+              (sum, item) => sum + item.outstandingBalance,
+            );
+            final recentPayments = payments
+              ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
+
+            final firstName = widget.user.name.split(' ').first;
+            final metrics = <_DashboardMetric>[
+              _DashboardMetric(
+                label: 'Pending Instalments',
+                value: pendingCount.toString(),
+                icon: Icons.account_balance_wallet_outlined,
+                color: const Color(0xFF2563EB),
+              ),
+              _DashboardMetric(
+                label: 'Overdue Payments',
+                value: overdueCount.toString(),
+                icon: Icons.warning_amber_rounded,
+                color: const Color(0xFFD97706),
+              ),
+              _DashboardMetric(
+                label: 'Payments Recorded This Month',
+                value: '₹${monthPaymentsTotal.toStringAsFixed(2)}',
+                icon: Icons.payments_outlined,
+                color: const Color(0xFF059669),
+              ),
+              _DashboardMetric(
+                label: 'Outstanding Balance',
+                value: '₹${outstandingBalance.toStringAsFixed(2)}',
+                icon: Icons.currency_rupee_rounded,
+                color: const Color(0xFF7C3AED),
+              ),
+            ];
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1440),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Good to see you, $firstName.',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      color: AppTheme.ink,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Financial overview for ${_monthName(today.month)} ${today.year}.',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(color: Colors.blueGrey.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => setState(() {}),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Refresh'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columns = constraints.maxWidth >= 1120
+                            ? 4
+                            : constraints.maxWidth >= 600
+                            ? 2
+                            : 1;
+                        const gap = 16.0;
+                        final cardWidth =
+                            (constraints.maxWidth - gap * (columns - 1)) /
+                            columns;
+                        return Wrap(
+                          spacing: gap,
+                          runSpacing: gap,
+                          children: metrics
+                              .map(
+                                (metric) => SizedBox(
+                                  width: cardWidth,
+                                  child: _MetricCard(metric: metric),
+                                ),
+                              )
+                              .toList(),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: _RecentPaymentsCard(
+                            payments: recentPayments.take(5).toList(),
+                            onSectionSelected: widget.onSectionSelected,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _OverdueInstalmentsCard(
+                            installments: overdueInstallments.take(5).toList(),
+                            onSectionSelected: widget.onSectionSelected,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _QuickActionsCard(
+                      onSectionSelected: widget.onSectionSelected,
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'Last updated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
+                        style: TextStyle(
+                          color: Colors.blueGrey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _QuickActionsCard extends StatelessWidget {
+  const _QuickActionsCard({required this.onSectionSelected});
+
+  final ValueChanged<String>? onSectionSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = <({String label, String target, IconData icon})>[
+      (
+        label: 'View Fee Management',
+        target: 'fee-management',
+        icon: Icons.account_balance_wallet_rounded,
+      ),
+      (
+        label: 'View Payments',
+        target: 'payments',
+        icon: Icons.payments_rounded,
+      ),
+      (
+        label: 'View Fee Reports',
+        target: 'fee-reports',
+        icon: Icons.receipt_long_rounded,
+      ),
+      (
+        label: 'Open Reminder Drafts',
+        target: 'reminder-drafts',
+        icon: Icons.mark_email_unread_rounded,
+      ),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick actions',
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800, color: AppTheme.ink),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: actions.map((action) {
+                return ElevatedButton.icon(
+                  onPressed: onSectionSelected == null
+                      ? null
+                      : () => onSectionSelected!(action.target),
+                  icon: Icon(action.icon),
+                  label: Text(action.label),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentPaymentsCard extends StatelessWidget {
+  const _RecentPaymentsCard({
+    required this.payments,
+    required this.onSectionSelected,
+  });
+
+  final List<Payment> payments;
+  final ValueChanged<String>? onSectionSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Recent payments',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.ink,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: onSectionSelected == null
+                      ? null
+                      : () => onSectionSelected!('payments'),
+                  child: const Text('View all'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (payments.isEmpty)
+              const Text('No payments recorded yet.')
+            else
+              ...payments.map(
+                (payment) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F0FF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: AppTheme.brand,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '₹${payment.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              payment.paymentMethod,
+                              style: TextStyle(color: Colors.blueGrey.shade600),
+                            ),
+                            Text(
+                              payment.referenceNumber ??
+                                  'Reference unavailable',
+                              style: TextStyle(color: Colors.blueGrey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        DateFormat('dd MMM yyyy').format(payment.paymentDate),
+                        style: TextStyle(color: Colors.blueGrey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverdueInstalmentsCard extends StatelessWidget {
+  const _OverdueInstalmentsCard({
+    required this.installments,
+    required this.onSectionSelected,
+  });
+
+  final List<FeeInstallment> installments;
+  final ValueChanged<String>? onSectionSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Overdue instalments',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.ink,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: onSectionSelected == null
+                      ? null
+                      : () => onSectionSelected!('fee-management'),
+                  child: const Text('Open'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (installments.isEmpty)
+              const Text('No overdue instalments right now.')
+            else
+              ...installments.map((item) {
+                final overdueDays = DateTime.now()
+                    .difference(item.dueDate)
+                    .inDays;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${item.studentName} (${item.studentId})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              '₹${item.outstandingBalance.toStringAsFixed(2)} • Due ${DateFormat('dd MMM yyyy').format(item.dueDate)}',
+                              style: TextStyle(color: Colors.blueGrey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '$overdueDays days',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFD97706),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FullPageError extends StatelessWidget {
+  const _FullPageError({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 32,
+                  color: Color(0xFFD97706),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.blueGrey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _monthName(int month) => switch (month) {
+  1 => 'January',
+  2 => 'February',
+  3 => 'March',
+  4 => 'April',
+  5 => 'May',
+  6 => 'June',
+  7 => 'July',
+  8 => 'August',
+  9 => 'September',
+  10 => 'October',
+  11 => 'November',
+  _ => 'December',
+};
 
 class PlaceholderSection extends StatelessWidget {
   const PlaceholderSection({

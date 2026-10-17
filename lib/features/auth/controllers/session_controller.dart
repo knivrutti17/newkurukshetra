@@ -5,7 +5,9 @@ import '../services/auth_service.dart';
 
 /// Holds the in-memory demo session and exposes authentication state to the UI.
 class SessionController extends ChangeNotifier {
-  SessionController({required this.authService});
+  SessionController({required this.authService}) {
+    _restoreSession();
+  }
 
   final AuthService authService;
 
@@ -17,6 +19,19 @@ class SessionController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   bool get isSignedIn => _currentUser != null;
+
+  Future<void> _restoreSession() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _currentUser = await authService.restoreSession();
+    } catch (_) {
+      _currentUser = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<bool> signIn({required String email, required String password}) async {
     _isLoading = true;

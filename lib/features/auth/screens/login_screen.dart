@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../data/models/app_user.dart';
 import '../controllers/session_controller.dart';
-import '../services/mock_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({required this.sessionController, super.key});
@@ -27,13 +25,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _fillDemoAccount(DemoAccount account) {
-    _emailController.text = account.user.email;
-    _passwordController.text = account.password;
-    widget.sessionController.clearError();
-    setState(() {});
-  }
-
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -47,7 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final isWide = width >= 880;
     final isCompact = width < 480;
 
     return Scaffold(
@@ -56,23 +46,8 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             padding: EdgeInsets.all(isCompact ? 20 : 32),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
-              child: isWide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _loginCard(context)),
-                        const SizedBox(width: 28),
-                        SizedBox(width: 360, child: _demoAccountsCard(context)),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _loginCard(context),
-                        const SizedBox(height: 20),
-                        _demoAccountsCard(context),
-                      ],
-                    ),
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: _loginCard(context),
             ),
           ),
         ),
@@ -108,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Use a demo account to explore role-specific views.',
+                'Use your Firebase account linked to an approved institute role.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: Colors.blueGrey.shade600),
               ),
@@ -191,48 +166,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 18),
               Text(
-                'This is a local demo. It does not use secure production authentication.',
+                'No demo credentials are used in production. Ask the institute owner to create a Firebase account with an assigned role.',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: Colors.blueGrey.shade600),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _demoAccountsCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _DemoModeBadge(),
-            const SizedBox(height: 16),
-            Text(
-              'Explore each workspace',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(color: AppTheme.ink, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Choose an account to fill its credentials.',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: Colors.blueGrey.shade600),
-            ),
-            const SizedBox(height: 14),
-            ...MockAuthService.demoAccounts.map(
-              (account) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _DemoAccountTile(
-                  account: account,
-                  onTap: () => _fillDemoAccount(account),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -272,98 +211,6 @@ class _BrandHeader extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _DemoModeBadge extends StatelessWidget {
-  const _DemoModeBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F0FF),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.science_outlined, size: 15, color: AppTheme.brand),
-          SizedBox(width: 6),
-          Text(
-            'DEMO MODE',
-            style: TextStyle(
-              color: AppTheme.brand,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-              letterSpacing: .8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DemoAccountTile extends StatelessWidget {
-  const _DemoAccountTile({required this.account, required this.onTap});
-
-  final DemoAccount account;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFF8FAFD),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: const Color(0xFFE8F0FF),
-                child: Text(
-                  account.user.name.substring(0, 1),
-                  style: const TextStyle(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      account.user.role.label,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      account.user.email,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      'Password: ${account.password}',
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_forward_rounded, size: 18),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

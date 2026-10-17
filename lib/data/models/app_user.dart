@@ -10,7 +10,16 @@ extension AppRoleLabel on AppRole {
   };
 }
 
-/// A signed-in user for the local demo session.
+extension AppRoleValue on AppRole {
+  String get value => switch (this) {
+    AppRole.owner => 'owner',
+    AppRole.counselor => 'counselor',
+    AppRole.trainer => 'trainer',
+    AppRole.accounts => 'accounts',
+  };
+}
+
+/// A signed-in user for the InstituteOS workspace.
 class AppUser {
   const AppUser({
     required this.id,
@@ -23,4 +32,13 @@ class AppUser {
   final String name;
   final String email;
   final AppRole role;
+
+  static AppRole? roleFromString(String? value) =>
+      switch ((value ?? '').trim().toLowerCase()) {
+        'owner' => AppRole.owner,
+        'counselor' => AppRole.counselor,
+        'trainer' => AppRole.trainer,
+        'accounts' || 'accounts staff' => AppRole.accounts,
+        _ => null,
+      };
 }

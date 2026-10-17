@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/controllers/session_controller.dart';
 import 'features/auth/screens/login_screen.dart';
-import 'features/auth/services/mock_auth_service.dart';
+import 'features/auth/services/firebase_auth_service.dart';
 import 'features/dashboard/screens/dashboard_shell.dart';
 
 class InstituteOsApp extends StatefulWidget {
@@ -22,7 +22,7 @@ class _InstituteOsAppState extends State<InstituteOsApp> {
   @override
   void initState() {
     super.initState();
-    _sessionController = SessionController(authService: MockAuthService());
+    _sessionController = SessionController(authService: FirebaseAuthService());
   }
 
   @override

@@ -5,6 +5,8 @@ import '../../../data/models/app_user.dart';
 /// A Firebase-backed implementation can replace the local demo service later
 /// without changing the login screen or dashboard routing.
 abstract interface class AuthService {
+  Future<AppUser?> restoreSession();
+
   Future<AppUser> signIn({required String email, required String password});
 
   Future<void> signOut();

@@ -57,6 +57,9 @@ class MockAuthService implements AuthService {
   ];
 
   @override
+  Future<AppUser?> restoreSession() async => null;
+
+  @override
   Future<AppUser> signIn({
     required String email,
     required String password,
